@@ -1,0 +1,45 @@
+{
+  "name": "sistema-op",
+  "version": "1.0.0",
+  "description": "Sistema web responsivo para gestão de Ordens de Produção com integração Google Sheets",
+  "type": "module",
+  "author": "Seu Nome",
+  "license": "MIT",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "lint": "eslint . --ext js,jsx --fix"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "zustand": "^4.4.1",
+    "axios": "^1.6.2",
+    "jspdf": "^2.5.1",
+    "html2canvas": "^1.4.1",
+    "date-fns": "^2.30.0",
+    "lucide-react": "^0.294.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.2.1",
+    "vite": "^5.0.8",
+    "tailwindcss": "^3.3.6",
+    "postcss": "^8.4.32",
+    "autoprefixer": "^10.4.16",
+    "eslint": "^8.55.0"
+  },
+  "engines": {
+    "node": ">=16.0.0",
+    "npm": ">=8.0.0"
+  },
+  "keywords": [
+    "producao",
+    "ordens",
+    "google-sheets",
+    "react",
+    "vite",
+    "pdf",
+    "responsivo"
+  ]
+}
