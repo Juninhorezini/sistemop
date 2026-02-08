@@ -4,8 +4,8 @@
 
 ### 1️⃣ Clonar o Repositório
 ```bash
-git clone https://github.com/juninhorezini/sistemop2.git
-cd sistemop2
+git clone https://github.com/juninhorezini/sistemop.git
+cd sistemop
 ```
 
 ### 2️⃣ Instalar Dependências
