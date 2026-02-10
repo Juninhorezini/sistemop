@@ -14,6 +14,7 @@ import {
   X
 } from 'lucide-react';
 import googleSheetsService from './services/googleSheetsService';
+import { fullSync } from './services/syncService';
 
 /**
  * CONFIGURAÇÕES TÉCNICAS
@@ -28,9 +29,6 @@ const App = () => {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState(null);
   const [showModal, setShowModal] = useState({ type: null, data: null });
-
-  // Refs para controle de foco dinâmico
-  const inputRefs = useRef({});
 
   // --- Estados de Configuração ---
   const [configItems, setConfigItems] = useState(() => {
@@ -51,20 +49,48 @@ const App = () => {
     nextOpId: 1
   });
 
-  useEffect(() => {
-    localStorage.setItem(`${APP_ID}_configs`, JSON.stringify(configItems));
-  }, [configItems]);
+  // Refs para controle de foco dinâmico
+  const inputRefs = useRef({});
 
-  useEffect(() => {
-    const lastId = parseInt(localStorage.getItem(`${APP_ID}_last_id`) || '0');
-    setOpHeader(prev => ({ ...prev, nextOpId: lastId + 1 }));
-  }, []);
-
-  // --- Helpers ---
+  // --- Helpers (definir antes de usar em useEffect) ---
   const showAlert = (text, type = 'success') => {
     setMessage({ text, type });
     setTimeout(() => setMessage(null), 3000);
   };
+
+  /**
+   * Sincroniza dados da Google Sheets ao abrir o app
+   * Se houver dados na planilha, carrega deles. Senão, usa dados locais.
+   */
+  useEffect(() => {
+    const initSync = async () => {
+      try {
+        const syncedConfigs = await fullSync();
+        // Se houver dados sincronizados, recarrega as configurações
+        if (syncedConfigs && syncedConfigs.length > 0) {
+          setConfigItems(syncedConfigs);
+          showAlert('Dados sincronizados com sucesso!', 'success');
+        }
+      } catch (error) {
+        console.error('Erro ao sincronizar ao abrir:', error);
+        // Não mostra erro, apenas usa dados locais
+      }
+    };
+
+    // Executa apenas uma vez ao abrir o app
+    initSync();
+  }, []);
+
+  // Salva configurações no localStorage quando muda
+  useEffect(() => {
+    localStorage.setItem(`${APP_ID}_configs`, JSON.stringify(configItems));
+  }, [configItems]);
+
+  // Inicializa o próximo OP ID
+  useEffect(() => {
+    const lastId = parseInt(localStorage.getItem(`${APP_ID}_last_id`) || '0');
+    setOpHeader(prev => ({ ...prev, nextOpId: lastId + 1 }));
+  }, []);
 
   const calculateRocas = (cones, itemId) => {
     const item = configItems.find(i => i.name === itemId);
