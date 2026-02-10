@@ -46,10 +46,10 @@ for = "/index.html"
 Cache-Control = "no-cache, no-store, must-revalidate"
 
 # Configurar variáveis de ambiente
-[[context.production.environment]]
+[context.production.environment]
 VITE_GOOGLE_SHEETS_API_KEY = ""
 VITE_GOOGLE_SCRIPT_URL = ""
 
-[[context.deploy-preview.environment]]
+[context.deploy-preview.environment]
 VITE_GOOGLE_SHEETS_API_KEY = ""
 VITE_GOOGLE_SCRIPT_URL = ""

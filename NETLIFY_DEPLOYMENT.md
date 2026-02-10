@@ -16,7 +16,7 @@ git init
 git add .
 git commit -m "Initial commit: Sistema OP"
 git branch -M main
-git remote add origin https://github.com/seu-usuario/sistemop.git
+git remote add origin https://github.com/juninhorezini/sistemop.git
 git push -u origin main
 ```
 
