@@ -48,8 +48,8 @@ Cache-Control = "no-cache, no-store, must-revalidate"
 # Configurar variáveis de ambiente
 [context.production.environment]
 VITE_GOOGLE_SHEETS_API_KEY = ""
-VITE_GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzbXJPkYTBj9Odgl9RQfapJ_ikMZlo2uuEqAePmUWW6goOoD2mifsUWQKwIinLpJeG5mA/exec"
+VITE_GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzjKJSNdDht-o9v3nygpcx2XZt5G301b3aKAElgRWwiKIvrZFpXy7PNzdTpuIRRuxeS7A/exec"
 
 [context.deploy-preview.environment]
 VITE_GOOGLE_SHEETS_API_KEY = ""
-VITE_GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzbXJPkYTBj9Odgl9RQfapJ_ikMZlo2uuEqAePmUWW6goOoD2mifsUWQKwIinLpJeG5mA/exec"
+VITE_GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzjKJSNdDht-o9v3nygpcx2XZt5G301b3aKAElgRWwiKIvrZFpXy7PNzdTpuIRRuxeS7A/exec"
