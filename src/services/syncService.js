@@ -4,43 +4,20 @@ const APP_ID = "op-manager-ff"
 
 /**
  * Sincroniza configurações (itens) da Google Sheets para localStorage
- * Se houver dados na planilha, carrega deles. Senão, usa dados locais.
+ * Busca diretamente da planilha usando o novo método getConfigs
  */
 export async function syncConfigFromSheets() {
   try {
-    const allOPs = await googleSheetsService.getAllOPs()
+    const configs = await googleSheetsService.getConfigs()
     
-    if (!allOPs || allOPs.length === 0) {
-      console.log('[Sync] Nenhuma OP na planilha, usando dados locais')
+    if (!configs || configs.length === 0) {
+      console.log('[Sync] Nenhuma configuração na planilha')
       return null
     }
 
-    // Extrai itens únicos das OPs existentes
-    const itemsMap = new Map()
-    allOPs.forEach(op => {
-      if (op.itens && Array.isArray(op.itens)) {
-        op.itens.forEach(item => {
-          if (item.name) {
-            itemsMap.set(item.name, {
-              id: item.name,
-              name: item.name,
-              weightRoca: item.weightRoca || 0,
-              weightCone: item.weightCone || 0,
-              supply: item.supply || ''
-            })
-          }
-        })
-      }
-    })
-
-    if (itemsMap.size > 0) {
-      const configs = Array.from(itemsMap.values())
-      localStorage.setItem(`${APP_ID}_configs`, JSON.stringify(configs))
-      console.log('[Sync] ✓ Configurações sincronizadas', configs.length, 'itens')
-      return configs
-    }
-
-    return null
+    localStorage.setItem(`${APP_ID}_configs`, JSON.stringify(configs))
+    console.log('[Sync] ✓ Configurações sincronizadas:', configs.length, 'itens')
+    return configs
   } catch (error) {
     console.error('[Sync] Erro ao sincronizar configurações:', error.message)
     return null
@@ -76,15 +53,34 @@ export async function fullSync() {
   console.log('[Sync] Iniciando sincronização...')
   
   try {
-    await Promise.all([
+    const [syncedConfigs, syncedLastNumber] = await Promise.all([
       syncConfigFromSheets(),
       syncLastOPNumberFromSheets()
     ])
     
     console.log('[Sync] ✓ Sincronização completa!')
-    return true
+    return syncedConfigs
   } catch (error) {
     console.error('[Sync] Erro na sincronização:', error.message)
-    return false
+    return null
+  }
+}
+
+/**
+ * Salva as configurações na Google Sheets
+ * Chamado quando usuário atualiza/adiciona/remove itens
+ */
+export async function saveConfigsToSheets(configs) {
+  try {
+    if (!configs || configs.length === 0) {
+      throw new Error('Nenhuma configuração para salvar')
+    }
+
+    await googleSheetsService.saveConfigs(configs)
+    console.log('[Sync] ✓ Configurações salvas na planilha')
+    return true
+  } catch (error) {
+    console.error('[Sync] Erro ao salvar configurações:', error.message)
+    throw error
   }
 }

@@ -14,7 +14,7 @@ import {
   X
 } from 'lucide-react';
 import googleSheetsService from './services/googleSheetsService';
-import { fullSync } from './services/syncService';
+import { fullSync, saveConfigsToSheets } from './services/syncService';
 
 /**
  * CONFIGURAÇÕES TÉCNICAS
@@ -449,7 +449,16 @@ const App = () => {
                 <div key={idx} className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 hover:shadow-md transition-shadow relative group">
                   <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button onClick={() => setShowModal({ type: 'edit_config', data: item })} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg"><Edit2 className="w-4 h-4" /></button>
-                    <button onClick={() => setConfigItems(configItems.filter(i => i.id !== item.id))} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg"><Trash2 className="w-4 h-4" /></button>
+                    <button onClick={async () => {
+                      const updatedConfigs = configItems.filter(i => i.id !== item.id);
+                      setConfigItems(updatedConfigs);
+                      try {
+                        await saveConfigsToSheets(updatedConfigs);
+                        showAlert("Item removido! ✓", "success");
+                      } catch (error) {
+                        showAlert("Erro ao remover da planilha.", "error");
+                      }
+                    }} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg"><Trash2 className="w-4 h-4" /></button>
                   </div>
                   <div className="text-blue-600 font-bold text-sm uppercase tracking-widest mb-1">{item.supply}</div>
                   <h3 className="text-2xl font-black text-slate-800 mb-4">{item.name}</h3>
@@ -487,12 +496,26 @@ const App = () => {
               <div><label className="text-xs font-bold text-slate-400 uppercase">Peso Cone</label>
               <input type="number" step="0.001" value={showModal.data.weightCone} onChange={e => setShowModal({...showModal, data: {...showModal.data, weightCone: Number(e.target.value)}})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3" /></div>
             </div>
-            <button onClick={() => {
+            <button onClick={async () => {
               const data = showModal.data;
-              if (data.id) setConfigItems(configItems.map(i => i.id === data.id ? data : i));
-              else setConfigItems([...configItems, { ...data, id: Date.now().toString() }]);
+              let updatedConfigs;
+              
+              if (data.id) {
+                updatedConfigs = configItems.map(i => i.id === data.id ? data : i);
+              } else {
+                updatedConfigs = [...configItems, { ...data, id: Date.now().toString() }];
+              }
+              
+              setConfigItems(updatedConfigs);
               setShowModal({ type: null, data: null });
-              showAlert("Item atualizado!");
+              
+              // Salva na planilha
+              try {
+                await saveConfigsToSheets(updatedConfigs);
+                showAlert("Item salvo com sucesso! ✓", "success");
+              } catch (error) {
+                showAlert("Erro ao salvar na planilha. Dados mantidos localmente.", "error");
+              }
             }} className="w-full bg-blue-600 text-white font-bold py-4 rounded-xl">Salvar</button>
           </div>
         </div>

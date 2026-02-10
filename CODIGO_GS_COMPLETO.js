@@ -92,6 +92,10 @@ function doPost(e) {
         return updateOP(sheet, data.op);
       case 'deleteOP':
         return deleteOP(sheet, data.opNumber);
+      case 'saveConfigs':
+        return saveConfigs(sheet, data.configs);
+      case 'getConfigs':
+        return getConfigs(sheet);
       default:
         Logger.log('Ação inválida: ' + action);
         return respond(false, { error: 'Ação inválida: ' + action });
@@ -318,6 +322,93 @@ function deleteOP(sheet, opNumber) {
     return respond(true, { mensagem: 'OP deletada com sucesso' });
   } catch (error) {
     return respond(false, { error: 'Erro ao deletar OP: ' + error.toString() });
+  }
+}
+
+// ============================================================================
+// FUNÇÃO: Salvar Configurações (Itens)
+// Colunas K, L, M, N da aba OPs Produção
+// K: Insumo | L: Item | M: Peso Roca | N: Peso Cone
+// ============================================================================
+function saveConfigs(sheet, configs) {
+  try {
+    if (!configs || !Array.isArray(configs) || configs.length === 0) {
+      return respond(false, { error: 'Nenhuma configuração fornecida' });
+    }
+
+    // Limpa as colunas de configuração (K:N) deixando apenas o header
+    const configRange = sheet.getRange('K:N');
+    const lastRow = sheet.getLastRow();
+    
+    // Se houver dados em K:N, limpa
+    if (lastRow > 1) {
+      try {
+        sheet.getRange('K2:N' + lastRow).clearContent();
+      } catch (e) {
+        // Ignora se não houver dados
+      }
+    }
+
+    // Adiciona header se não existir
+    const headerRow = sheet.getRange('K1:N1').getValues()[0];
+    const hasHeader = headerRow[0] && headerRow[0].toString().length > 0;
+    
+    if (!hasHeader) {
+      sheet.getRange('K1').setValue('Insumo');
+      sheet.getRange('L1').setValue('Item');
+      sheet.getRange('M1').setValue('Peso Roca');
+      sheet.getRange('N1').setValue('Peso Cone');
+    }
+
+    // Prepara dados para inserção
+    const rowsToAdd = configs.map(config => [
+      config.supply || '',
+      config.name || '',
+      config.weightRoca || 0,
+      config.weightCone || 0
+    ]);
+
+    // Adiciona as configurações
+    if (rowsToAdd.length > 0) {
+      sheet.getRange(2, 11, rowsToAdd.length, 4).setValues(rowsToAdd);
+    }
+
+    return respond(true, {
+      mensagem: 'Configurações salvas com sucesso',
+      count: configs.length
+    });
+  } catch (error) {
+    return respond(false, { error: 'Erro ao salvar configurações: ' + error.toString() });
+  }
+}
+
+// ============================================================================
+// FUNÇÃO: Buscar Configurações (Itens)
+// Colunas K, L, M, N da aba OPs Produção
+// ============================================================================
+function getConfigs(sheet) {
+  try {
+    // Lê apenas as colunas K:N
+    const configRange = sheet.getRange('K:N').getValues();
+
+    if (configRange.length <= 1) {
+      return respond(true, { configs: [], count: 0 });
+    }
+
+    // Remove header (primeira linha) e filtra linhas vazias
+    const configs = configRange.slice(1)
+      .filter(row => row[0] && row[0].toString().length > 0) // Filtra linhas vazias
+      .map((row, index) => ({
+        id: index.toString(),
+        supply: row[0] || '',
+        name: row[1] || '',
+        weightRoca: isNaN(parseFloat(row[2])) ? 0 : parseFloat(row[2]),
+        weightCone: isNaN(parseFloat(row[3])) ? 0 : parseFloat(row[3])
+      }));
+
+    return respond(true, { configs: configs, count: configs.length });
+  } catch (error) {
+    return respond(false, { error: 'Erro ao buscar configurações: ' + error.toString() });
   }
 }
 

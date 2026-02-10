@@ -170,6 +170,56 @@ class GoogleSheetsService {
   }
 
   /**
+   * Busca todas as configurações (itens) da planilha
+   * Colunas K:N da aba OPs Produção
+   * @returns {Promise<Array>}
+   */
+  async getConfigs() {
+    try {
+      const response = await this._post({
+        action: 'getConfigs',
+        sheetName: SHEET_NAME
+      })
+
+      if (response.data.success) {
+        return response.data.configs || []
+      } else {
+        throw new Error(response.data.error || 'Erro ao buscar configurações')
+      }
+    } catch (error) {
+      console.error('Erro ao buscar configurações:', error.message)
+      return []
+    }
+  }
+
+  /**
+   * Salva as configurações (itens) na planilha
+   * Colunas K:N da aba OPs Produção
+   * @param {Array<Object>} configs - Lista de configurações
+   * @returns {Promise<Object>}
+   */
+  async saveConfigs(configs) {
+    try {
+      const payload = {
+        action: 'saveConfigs',
+        configs: configs,
+        sheetName: SHEET_NAME
+      }
+
+      const response = await this._post(payload)
+
+      if (response.data.success) {
+        return { success: true, data: response.data }
+      } else {
+        throw new Error(response.data.error || 'Erro ao salvar configurações')
+      }
+    } catch (error) {
+      console.error('Erro ao salvar configurações:', error.message)
+      throw new Error('Não foi possível salvar as configurações.')
+    }
+  }
+
+  /**
    * Verifica a conectividade com o Google Apps Script
    * @returns {Promise<boolean>}
    */
