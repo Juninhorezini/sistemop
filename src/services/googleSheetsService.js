@@ -1,33 +1,44 @@
 import axios from 'axios'
 
-const SHEET_ID = '1CWw8zKMf1ww08gynis7qIAYFjaYJo3PYb8bghp35zYE'
 const SHEET_NAME = 'OPs Produção'
-const SHEET_API_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/edit`
 
-// Inicializar Google Sheets API
-const API_KEY = import.meta.env.VITE_GOOGLE_SHEETS_API_KEY || 'AIzaSyDEOW_lTXxqxUgmXn4qm3FHSw7P_WQ_lE0'
-
-// Para autenticação OAuth (necessário para escrita)
-const GOOGLE_SCRIPT_URL = import.meta.env.VITE_GOOGLE_SCRIPT_URL || 'https://script.google.com/macros/d/YOUR_SCRIPT_ID/usercopy'
+// Configuração do Google Apps Script Standalone
+const GOOGLE_SCRIPT_URL = import.meta.env.VITE_GOOGLE_SCRIPT_URL || 'https://script.google.com/macros/s/YOUR_SCRIPT_ID/usercopy'
 
 class GoogleSheetsService {
+
+  /**
+   * Helper privado para fazer requisições POST evitando preflight CORS
+   * Google Apps Script não suporta OPTIONS (preflight), então usamos text/plain
+   */
+  async _post(payload) {
+    const config = {
+      headers: {
+        'Content-Type': 'text/plain;charset=utf-8'
+      }
+    };
+    // Envia stringificado para garantir que axios não mude para application/json
+    return axios.post(GOOGLE_SCRIPT_URL, JSON.stringify(payload), config);
+  }
+
   /**
    * Busca todas as OPs da planilha
    * @returns {Promise<Array>}
    */
   async getAllOPs() {
     try {
-      // Este é um endpoint de exemplo. Você precisará configurar um Google Apps Script
-      // que exponha uma função para ler os dados da planilha
-      const response = await axios.get(GOOGLE_SCRIPT_URL, {
-        params: {
-          action: 'getAllOPs',
-          range: `${SHEET_NAME}!A:H`
-        }
+      const response = await this._post({
+        action: 'getAllOPs',
+        sheetName: SHEET_NAME
       })
-      return response.data || []
+
+      if (response.data.success) {
+        return response.data.ops || []
+      } else {
+        throw new Error(response.data.error || 'Erro ao buscar OPs')
+      }
     } catch (error) {
-      console.error('Erro ao buscar OPs:', error)
+      console.error('Erro ao buscar OPs:', error.message)
       throw new Error('Não foi possível buscar as OPs da planilha')
     }
   }
@@ -38,25 +49,18 @@ class GoogleSheetsService {
    */
   async getLastOPNumber() {
     try {
-      const response = await axios.get(
-        `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${SHEET_NAME}!A:A`,
-        {
-          params: { key: API_KEY }
-        }
-      )
-      
-      const values = response.data.values || []
-      if (values.length <= 1) return 0
-      
-      // Remove cabeçalho e encontra o último número
-      const numbers = values
-        .slice(1)
-        .map(row => parseInt(row[0]))
-        .filter(n => !isNaN(n))
-      
-      return Math.max(0, ...numbers)
+      const response = await this._post({
+        action: 'getLastOPNumber',
+        sheetName: SHEET_NAME
+      })
+
+      if (response.data.success) {
+        return response.data.lastNumber || 0
+      } else {
+        throw new Error(response.data.error || 'Erro ao buscar último número')
+      }
     } catch (error) {
-      console.error('Erro ao buscar último ID:', error)
+      console.error('Erro ao buscar último ID:', error.message)
       return 0
     }
   }
@@ -68,18 +72,13 @@ class GoogleSheetsService {
    */
   async saveOP(op) {
     try {
-      // Prepare data para enviar ao Google Apps Script
       const payload = {
         action: 'saveOP',
         op: op,
         sheetName: SHEET_NAME
       }
 
-      const response = await axios.post(GOOGLE_SCRIPT_URL, payload, {
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      })
+      const response = await this._post(payload)
 
       if (response.data.success) {
         return { success: true, data: response.data }
@@ -87,8 +86,34 @@ class GoogleSheetsService {
         throw new Error(response.data.error || 'Erro ao salvar OP')
       }
     } catch (error) {
-      console.error('Erro ao salvar OP:', error)
+      console.error('Erro ao salvar OP:', error.message)
       throw new Error('Não foi possível salvar a OP. Tente novamente.')
+    }
+  }
+
+  /**
+   * Salva múltiplas OPs na planilha em lote (Batch)
+   * @param {Array<Object>} ops - Lista de OPs
+   * @returns {Promise<Object>}
+   */
+  async saveOPsBatch(ops) {
+    try {
+      const payload = {
+        action: 'saveOPsBatch',
+        ops: ops,
+        sheetName: SHEET_NAME
+      }
+
+      const response = await this._post(payload)
+
+      if (response.data.success) {
+        return { success: true, data: response.data }
+      } else {
+        throw new Error(response.data.error || 'Erro ao salvar lote de OPs')
+      }
+    } catch (error) {
+      console.error('Erro ao salvar lote de OPs:', error.message)
+      throw new Error('Não foi possível salvar as OPs em lote.')
     }
   }
 
@@ -105,11 +130,7 @@ class GoogleSheetsService {
         sheetName: SHEET_NAME
       }
 
-      const response = await axios.post(GOOGLE_SCRIPT_URL, payload, {
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      })
+      const response = await this._post(payload)
 
       if (response.data.success) {
         return { success: true, data: response.data }
@@ -117,7 +138,7 @@ class GoogleSheetsService {
         throw new Error(response.data.error || 'Erro ao atualizar OP')
       }
     } catch (error) {
-      console.error('Erro ao atualizar OP:', error)
+      console.error('Erro ao atualizar OP:', error.message)
       throw new Error('Não foi possível atualizar a OP.')
     }
   }
@@ -135,11 +156,7 @@ class GoogleSheetsService {
         sheetName: SHEET_NAME
       }
 
-      const response = await axios.post(GOOGLE_SCRIPT_URL, payload, {
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      })
+      const response = await this._post(payload)
 
       if (response.data.success) {
         return { success: true }
@@ -147,19 +164,26 @@ class GoogleSheetsService {
         throw new Error(response.data.error || 'Erro ao deletar OP')
       }
     } catch (error) {
-      console.error('Erro ao deletar OP:', error)
+      console.error('Erro ao deletar OP:', error.message)
       throw new Error('Não foi possível deletar a OP.')
     }
   }
 
   /**
-   * Autenticação com Google
-   * @returns {Promise<Object>}
+   * Verifica a conectividade com o Google Apps Script
+   * @returns {Promise<boolean>}
    */
-  async authenticate() {
-    // Implementar OAuth 2.0 flow aqui
-    // Por enquanto, retornar um objeto vazio
-    return {}
+  async testConnection() {
+    try {
+      const response = await this._post({
+        action: 'getLastOPNumber',
+        sheetName: SHEET_NAME
+      })
+      return response.data.success === true
+    } catch (error) {
+      console.error('Erro ao testar conexão:', error.message)
+      return false
+    }
   }
 }
 

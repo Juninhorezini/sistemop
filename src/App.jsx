@@ -13,6 +13,7 @@ import {
   Loader2,
   X
 } from 'lucide-react';
+import googleSheetsService from './services/googleSheetsService';
 
 /**
  * CONFIGURAÇÕES TÉCNICAS
@@ -83,11 +84,19 @@ const App = () => {
   const resetList = () => {
     setCurrentList([]);
     setIsDirty(false);
-    setOpHeader(prev => ({ ...prev, date: new Date().toISOString().split('T')[0] }));
+    setOpHeader(prev => ({ 
+      ...prev, 
+      date: new Date().toISOString().split('T')[0],
+      selectedItem: '' 
+    }));
     setShowModal({ type: null, data: null });
   };
 
   const addOpRow = () => {
+    if (!opHeader.selectedItem) {
+      return showAlert("Selecione um item antes de adicionar OPs.", "error");
+    }
+
     const newId = opHeader.nextOpId + currentList.length;
     const newRow = {
       id: newId,
@@ -145,17 +154,38 @@ const App = () => {
 
     setLoading(true);
     try {
-      console.log("Salvando no Sheets:", { header: opHeader, data: currentList });
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // Find config item for weight calculation
+      const selectedConfig = configItems.find(item => item.name === opHeader.selectedItem);
+      const weightCone = selectedConfig ? selectedConfig.weightCone : 0;
+
+      // Prepare all OPs data for batch save
+      const opsToSave = currentList.map(row => ({
+        numero: row.id,
+        data: opHeader.date,
+        color: row.color,
+        obs: row.obs, // Adicionando observações
+        itens: [
+          {
+            itemName: opHeader.selectedItem,
+            qtdCones: Number(row.cones),
+            qtdRocas: Number(row.rocas),
+            pesoTotal: Number(row.cones) * weightCone
+          }
+        ]
+      }));
+      
+      // Send all OPs in a single batch request
+      await googleSheetsService.saveOPsBatch(opsToSave);
       
       const lastId = currentList[currentList.length - 1].id;
       localStorage.setItem(`${APP_ID}_last_id`, lastId.toString());
       setOpHeader(prev => ({ ...prev, nextOpId: lastId + 1 }));
       
       setIsDirty(false);
-      showAlert("Dados salvos com sucesso no Google Sheets!");
+      showAlert("Todas as OPs foram salvas com sucesso!");
     } catch (e) {
-      showAlert("Erro ao salvar dados.", "error");
+      console.error(e);
+      showAlert("Erro ao salvar dados: " + e.message, "error");
     } finally {
       setLoading(false);
     }

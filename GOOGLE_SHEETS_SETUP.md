@@ -9,32 +9,34 @@ Colunas necessárias:
 |--------|-------|------|-----------|
 | A | Número | Integer | Número sequencial da OP |
 | B | Data | Date | Data de criação (YYYY-MM-DD) |
-| C | Itens | String | Itens concatenados (separados por vírgula) |
-| D | Qtd Cones | Integer | Total de cones na OP |
-| E | Qtd Rocas | Integer | Total de rocas calculado |
-| F | Peso Total | Decimal | Peso total em kg |
-| G | Data Envio | DateTime | Timestamp de quando foi enviado |
+| C | Cor | String | Cor da OP |
+| D | Itens | String | Itens concatenados (separados por vírgula) |
+| E | Qtd Cones | Integer | Total de cones na OP |
+| F | Qtd Rocas | Integer | Total de rocas calculado |
+| G | Peso Total | Decimal | Peso total em kg |
+| H | Data Envio | DateTime | Timestamp de quando foi enviado |
 
 ### Exemplo de Dados
 ```
-Número | Data       | Itens           | Qtd Cones | Qtd Rocas | Peso Total | Data Envio
-1      | 2024-02-08 | Item A, Item B  | 100       | 25        | 250.00     | 2024-02-08T10:30:00Z
-2      | 2024-02-09 | Item A          | 50        | 13        | 130.00     | 2024-02-09T14:15:00Z
+Número | Data       | Cor    | Itens           | Qtd Cones | Qtd Rocas | Peso Total | Data Envio
+1      | 2024-02-08 | Azul   | Item A, Item B  | 100       | 25        | 250.00     | 2024-02-08T10:30:00Z
+2      | 2024-02-09 | Verde  | Item A          | 50        | 13        | 130.00     | 2024-02-09T14:15:00Z
 ```
 
-## 🔐 Configuração Google Apps Script
+## 🔐 Configuração Google Apps Script (Standalone)
 
-O Google Apps Script atua como intermediário entre o app e a planilha.
+O Google Apps Script atua como intermediário independente entre o app e a planilha. Este é um projeto **standalone** que não depende de estar vinculado à planilha, reduzindo a carga de execução direta.
 
-### Passo 1: Criar o Script
-1. Abra a planilha em Google Sheets
-2. Clique em **Extensões** > **Apps Script**
-3. Limpe o código padrão e cole:
+### Passo 1: Criar um Novo Projeto Standalone
+1. Acesse [script.google.com](https://script.google.com)
+2. Clique em **Novo projeto**
+3. Nomeie como "SistemaOP - API"
+4. Limpe o código padrão e cole:
 
 ```javascript
-// Configuração
+// Configuração para projeto standalone
 const SHEET_NAME = 'OPs Produção';
-const SPREADSHEET_ID = SpreadsheetApp.getActiveSpreadsheet().getId();
+const SPREADSHEET_ID = 'SEU_SPREADSHEET_ID_AQUI'; // ID da sua planilha
 
 /**
  * Função principal para receber POST requests
@@ -44,9 +46,11 @@ function doPost(e) {
     const data = JSON.parse(e.postData.contents);
     const action = data.action;
     
-    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME);
+    const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const sheet = spreadsheet.getSheetByName(SHEET_NAME);
+    
     if (!sheet) {
-      return respondWithError('Sheet "' + SHEET_NAME + '" não encontrada');
+      return respondWithError('Sheet "' + SHEET_NAME + '" não encontrada na planilha');
     }
     
     switch(action) {
@@ -90,6 +94,7 @@ function saveOP(sheet, op) {
     const row = [
       op.numero,
       op.data,
+      op.color || '',
       itemNomes,
       totalCones,
       totalRocas,
@@ -121,11 +126,12 @@ function getAllOPs(sheet) {
       return {
         numero: row[0],
         data: row[1],
-        itens: row[2],
-        qtdCones: row[3],
-        qtdRocas: row[4],
-        pesoTotal: row[5],
-        dataEnvio: row[6]
+        color: row[2],
+        itens: row[3],
+        qtdCones: row[4],
+        qtdRocas: row[5],
+        pesoTotal: row[6],
+        dataEnvio: row[7]
       };
     });
     
@@ -180,11 +186,12 @@ function updateOP(sheet, op) {
     
     sheet.getRange(updateRow, 1).setValue(op.numero);
     sheet.getRange(updateRow, 2).setValue(op.data);
-    sheet.getRange(updateRow, 3).setValue(itemNomes);
-    sheet.getRange(updateRow, 4).setValue(totalCones);
-    sheet.getRange(updateRow, 5).setValue(totalRocas);
-    sheet.getRange(updateRow, 6).setValue(parseFloat(totalPeso.toFixed(2)));
-    sheet.getRange(updateRow, 7).setValue(new Date().toISOString());
+    sheet.getRange(updateRow, 3).setValue(op.color || '');
+    sheet.getRange(updateRow, 4).setValue(itemNomes);
+    sheet.getRange(updateRow, 5).setValue(totalCones);
+    sheet.getRange(updateRow, 6).setValue(totalRocas);
+    sheet.getRange(updateRow, 7).setValue(parseFloat(totalPeso.toFixed(2)));
+    sheet.getRange(updateRow, 8).setValue(new Date().toISOString());
     
     return respond(true, { numero: op.numero, mensagem: 'OP atualizada com sucesso' });
   } catch(error) {
@@ -245,32 +252,67 @@ function respond(success, data) {
 }
 ```
 
-### Passo 2: Implantar como Aplicação Web
-1. Clique em **Implantar** > **Nova implantação**
-2. Tipo: **Aplicação web**
-3. Executar como: Sua conta Google
-4. Quem tem acesso: **Qualquer pessoa**
-5. Clique em **Implantar**
-6. Copie a URL da aplicação web
+### Passo 2: Obter o ID da Planilha
+1. Abra sua planilha em Google Sheets
+2. Na URL, copie o ID entre `/d/` e `/edit`:
+   ```
+   https://docs.google.com/spreadsheets/d/1mZ9_j3kL4qP2nR7sT5jH6fK/edit
+   ```
+   O ID é: `1mZ9_j3kL4qP2nR7sT5jH6fK`
+3. Volte para o projeto Apps Script e substitua `SEU_SPREADSHEET_ID_AQUI` pelo ID obtido
 
-### Passo 3: Configurar a URL no App
+### Passo 3: Conceder Permissões ao Script
+1. No projeto Apps Script, clique em **Configurações** (engrenagem)
+2. Anote o **ID do projeto**
+3. Acesse sua planilha no Google Sheets
+4. Clique em **Compartilhar** (canto superior direito)
+5. Compartilhe a planilha com o e-mail associado ao projeto Apps Script
+   - Você pode encontrar o e-mail em **Detalhes do projeto** no Apps Script
+
+### Passo 4: Implantar como Aplicação Web
+1. No Apps Script, clique em **Implantar** > **Nova implantação**
+2. Tipo: **Aplicação web**
+3. **Executar como**: Sua conta Google (a mesma com acesso à planilha)
+4. **Quem tem acesso**: **Qualquer pessoa**
+5. Clique em **Implantar**
+6. **Copie a URL** da aplicação web gerada
+7. Clique em "Liberar acesso" se solicitado
+
+### Passo 5: Configurar a URL no App
 1. Crie arquivo `.env.local` na raiz do projeto:
 ```
-VITE_GOOGLE_SCRIPT_URL=https://script.google.com/macros/d/YOUR_SCRIPT_ID/usercopy
+VITE_GOOGLE_SCRIPT_URL=https://script.google.com/macros/s/YOUR_SCRIPT_ID/usercopy
 ```
+
+_Obs: Você copiou essa URL no Passo 4_
 
 ## 🔄 Fluxo de Dados
 
 ### Salvando uma OP
 ```
 App (React)
-  ↓ POST request
-Google Apps Script
+  ↓ POST request (via URL standalone)
+Google Apps Script (Projeto Independente)
   ↓
 Google Sheets (Aba: OPs Produção)
   ↓ Response
 App (sucesso/erro)
 ```
+
+### Arquitetura
+- **Planilha**: Armazena apenas dados, sem scripts vinculados ✓ _carga leve_
+- **Apps Script Standalone**: Executa toda a lógica de negócio ✓ _escalável_
+- **App React**: UI intuitiva ✓ _responsivo_
+
+## ⚡ Atualizar Versão do Deployment
+Sempre que você modificar o código do Apps Script:
+
+1. Clique em **Implantar** > **Gerencie implantações**
+2. Clique no ícone de editar (lápis) na implantação atual
+3. Selecione **Criar nova versão**
+4. Clique em **Implantar**
+
+A URL permanece a mesma, mas o código é atualizado.
 
 ### Payload de Exemplo
 ```json
@@ -280,6 +322,7 @@ App (sucesso/erro)
   "op": {
     "numero": 123,
     "data": "2024-02-08",
+    "color": "Azul",
     "itens": [
       {
         "itemId": 1,
@@ -297,43 +340,31 @@ App (sucesso/erro)
 
 ## ⚠️ Limitações e Considerações
 
-1. **Rate Limiting**: Google Sheets permite ~100 requisições/min
+1. **Rate Limiting**: Google Apps Script permite ~100 requisições/min
 2. **Timeout**: Requisições devem completar em < 6 minutos
 3. **Tamanho**: Máximo 10MB por requisição
-4. **Segurança**: O script é público, qualquer um com a URL pode chamar
-   - Implemente autenticação adicional se necessário
-
-## 🛡️ Melhorias de Segurança (Opcional)
-
-```javascript
-// Adicione um token de autenticação
-const VALID_TOKENS = ['seu-token-secreto-aqui'];
-
-function doPost(e) {
-  const token = e.parameter.token;
-  
-  if (!VALID_TOKENS.includes(token)) {
-    return respondWithError('Não autorizado');
-  }
-  
-  // ... resto do código
-}
-```
 
 ## 📞 Troubleshooting
 
-### Erro 403 - Forbidden
+### Erro 403 - Forbidden / Unauthorized
 - Verifique se a URL está correta
-- Reimplante o script como "Qualquer pessoa"
+- Verifique se o SPREADSHEET_ID está correto
+- Certifique-se de que compartilhou a planilha com sua conta Google
 
 ### Erro 404 - Not Found
-- O script ID pode ter mudado
-- Reimplante e copie a URL novamente
+- Reimplante o script
+- Copie a URL novamente
+- Verifique se o URL está correto no `.env.local`
 
 ### Dados não aparecem na planilha
-- Verifique se o nome da aba está exatamente como "OPs Produção"
+- Verifique se o nome da aba está exatamente como **"OPs Produção"** (respeitando maiúsculas)
 - Verifique as permissões de acesso à planilha
+- Verifique o histórico de execução no Apps Script (Execuções)
+
+### Erro: Sheet não encontrada
+- Quando cria uma nova aba, certifique-se que o nome é exatamente **"OPs Produção"**
+- Importante: Respeitar maiúsculas/minúsculas
 
 ---
 
-Para mais informações, consulte [Google Sheets API Docs](https://developers.google.com/sheets/api)
+Para mais informações, consulte [Google Apps Script Docs](https://developers.google.com/apps-script/)
